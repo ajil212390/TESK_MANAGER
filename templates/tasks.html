@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Tasks</h2>
+    <button id="addTaskBtn" class="hidden" onclick="document.getElementById('taskFormCard').classList.toggle('hidden')">Add Task</button>
+</div>
+
+<div id="taskFormCard" class="card hidden">
+    <h3>Create Task</h3>
+    <form id="taskForm">
+        <input type="text" id="title" placeholder="Title" required>
+        <textarea id="description" placeholder="Description"></textarea>
+        <div style="display: flex; gap: 10px;">
+            <select id="project" required style="flex: 1;"><option value="">Select Project</option></select>
+            <select id="assigned_to" style="flex: 1;"><option value="">Assignee User</option></select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <select id="priority" style="flex: 1;">
+                <option value="low">Low Priority</option>
+                <option value="medium" selected>Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+            <input type="date" id="due_date" style="flex: 1;">
+        </div>
+        <button type="submit">Save</button>
+    </form>
+</div>
+
+<div id="descriptionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; z-index: 1000;">
+    <div class="card" style="width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto; position: relative;">
+        <button onclick="document.getElementById('descriptionModal').style.display = 'none'" style="position: absolute; top: 10px; right: 10px; background: var(--danger); padding: 5px 10px;">Close</button>
+        <h3 style="margin-bottom: 15px;">Task Description</h3>
+        <p id="modalDescriptionText" style="white-space: pre-wrap; line-height: 1.5; color: var(--text);"></p>
+    </div>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Project</th>
+                <th>Assignee</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Due Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tasksTableBody">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const userRole = localStorage.getItem('user_role');
+    if (userRole === 'admin') {
+        document.getElementById('addTaskBtn').classList.remove('hidden');
+    }
+
+    let usersDict = {};
+    let usersList = [];
+    let projectsDict = {};
+    let tasksData = [];
+
+    function showDescription(taskId) {
+        const task = tasksData.find(t => t.id === taskId);
+        const text = task ? (task.description || 'No description provided.') : 'No description provided.';
+        document.getElementById('modalDescriptionText').innerText = text;
+        document.getElementById('descriptionModal').style.display = 'flex';
+    }
+
+    async function loadOptions() {
+        if (userRole === 'admin') {
+            const resU = await fetch(API_URL + '/users/', { headers: getAuthHeaders() });
+            if (resU.ok) {
+                usersList = await resU.json();
+                usersList.forEach(u => {
+                    usersDict[u.id] = u.name;
+                });
+            }
+
+            const res = await fetch(API_URL + '/projects/', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const projects = await res.json();
+                const sel = document.getElementById('project');
+                projects.forEach(p => {
+                    projectsDict[p.id] = p;
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.innerText = p.name;
+                    sel.appendChild(opt);
+                });
+            }
+            
+            // Handle dynamic assignee dropdown based on selected project
+            document.getElementById('project').addEventListener('change', function() {
+                const projectId = this.value;
+                const userSel = document.getElementById('assigned_to');
+                userSel.innerHTML = '<option value="">Assignee User</option>'; // reset
+                
+                if (projectId && projectsDict[projectId]) {
+                    const projectMembers = projectsDict[projectId].members || [];
+                    usersList.forEach(u => {
+                        if (projectMembers.includes(u.id)) {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.innerText = u.name + " (" + u.email + ")";
+                            userSel.appendChild(opt);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    async function loadTasks() {
+        // Fetch users first if not fetched
+        if (Object.keys(usersDict).length === 0) {
+            const resU = await fetch(API_URL + '/users/', { headers: getAuthHeaders() });
+            if (resU.ok) {
+                const users = await resU.json();
+                users.forEach(u => usersDict[u.id] = u.name);
+            }
+        }
+
+        const res = await fetch(API_URL + '/tasks/', { headers: getAuthHeaders() });
+        if (res.ok) {
+            tasksData = await res.json();
+            const tbody = document.getElementById('tasksTableBody');
+            tbody.innerHTML = '';
+            tasksData.forEach(t => {
+                const tr = document.createElement('tr');
+                const statusColor = t.status === 'done' ? 'var(--success)' : (t.status === 'in-progress' ? 'var(--warning)' : 'var(--text)');
+                const projObj = projectsDict[t.project];
+                const projName = projObj ? projObj.name : "Project #" + t.project;
+                const assigneeName = t.assigned_to ? (usersDict[t.assigned_to] || "User #" + t.assigned_to) : "Unassigned";
+
+                tr.innerHTML = `
+                    <td>${t.title}</td>
+                    <td><button onclick="showDescription(${t.id})" style="padding: 2px 8px; font-size: 12px; border-radius: 4px;">View</button></td>
+                    <td>${projName}</td>
+                    <td>${assigneeName}</td>
+                    <td>${t.priority}</td>
+                    <td><span style="color: ${statusColor}; font-weight: bold;">${t.status}</span></td>
+                    <td>${t.due_date || 'N/A'}</td>
+                    <td>
+                        <select onchange="updateStatus(${t.id}, this.value)" style="padding: 5px; width: auto; margin: 0;">
+                            <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
+                            <option value="in-progress" ${t.status==='in-progress'?'selected':''}>In Progress</option>
+                            <option value="done" ${t.status==='done'?'selected':''}>Done</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    async function updateStatus(taskId, newStatus) {
+        await fetch(API_URL + '/tasks/' + taskId + '/', {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status: newStatus })
+        });
+        loadTasks();
+    }
+
+    document.getElementById('taskForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            project: document.getElementById('project').value,
+            priority: document.getElementById('priority').value,
+            due_date: document.getElementById('due_date').value || null,
+        };
+        const assigned_to = document.getElementById('assigned_to').value;
+        if (assigned_to) body.assigned_to = assigned_to;
+
+        const res = await fetch(API_URL + '/tasks/', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(body)
+        });
+        
+        if (res.ok) {
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskFormCard').classList.add('hidden');
+            loadTasks();
+        } else {
+            const err = await res.json();
+            alert('Error creating task: ' + JSON.stringify(err));
+        }
+    });
+
+    loadOptions().then(loadTasks);
+</script>
+{% endblock %}

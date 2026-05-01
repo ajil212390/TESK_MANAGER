@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Projects</h2>
+    <button id="addProjectBtn" class="hidden" onclick="document.getElementById('projectFormCard').classList.toggle('hidden')">Add Project</button>
+</div>
+
+<div id="projectFormCard" class="card hidden">
+    <h3>Create Project</h3>
+    <form id="projectForm">
+        <input type="text" id="projectName" placeholder="Project Name" required>
+        <div id="projectMembers" style="max-height: 150px; overflow-y: auto; background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+            <!-- Checkboxes will be populated here -->
+        </div>
+        <button type="submit">Save</button>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Members</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody id="projectsTableBody">
+        </tbody>
+    </table>
+</div>
+
+<script>
+    if (localStorage.getItem('user_role') === 'admin') {
+        document.getElementById('addProjectBtn').classList.remove('hidden');
+        loadUsers();
+    }
+
+    let usersDict = {};
+
+    async function loadUsers() {
+        const res = await fetch(API_URL + '/users/', { headers: getAuthHeaders() });
+        if (res.ok) {
+            const users = await res.json();
+            const container = document.getElementById('projectMembers');
+            users.forEach(u => {
+                usersDict[u.id] = u.name;
+                if (u.role === 'member') {
+                    const label = document.createElement('label');
+                    label.style.display = 'block';
+                    label.style.marginBottom = '5px';
+                    label.style.cursor = 'pointer';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = u.id;
+                    cb.style.width = 'auto';
+                    cb.style.marginRight = '8px';
+                    cb.style.marginBottom = '0';
+                    label.appendChild(cb);
+                    label.appendChild(document.createTextNode(u.name + " (" + u.email + ")"));
+                    container.appendChild(label);
+                }
+            });
+        } else {
+            if (res.status === 401) logout();
+        }
+    }
+
+    async function loadProjects() {
+        // Fetch users first if not fetched, so we can map IDs to names
+        if (Object.keys(usersDict).length === 0) {
+            const resU = await fetch(API_URL + '/users/', { headers: getAuthHeaders() });
+            if (resU.ok) {
+                const users = await resU.json();
+                users.forEach(u => usersDict[u.id] = u.name);
+            }
+        }
+
+        const res = await fetch(API_URL + '/projects/', { headers: getAuthHeaders() });
+        if (res.ok) {
+            const projects = await res.json();
+            const tbody = document.getElementById('projectsTableBody');
+            tbody.innerHTML = '';
+            projects.forEach(p => {
+                const tr = document.createElement('tr');
+                const membersNames = p.members.map(mId => usersDict[mId] || mId).join(', ');
+                tr.innerHTML = `
+                    <td>${p.id}</td>
+                    <td>${p.name}</td>
+                    <td>${membersNames}</td>
+                    <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            if (res.status === 401) logout();
+            else console.error('Failed to load projects');
+        }
+    }
+
+    document.getElementById('projectForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('projectName').value;
+        const container = document.getElementById('projectMembers');
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+        const members = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        const res = await fetch(API_URL + '/projects/', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ name, members })
+        });
+        if (res.ok) {
+            document.getElementById('projectName').value = '';
+            const allCheckboxes = container.querySelectorAll('input[type="checkbox"]');
+            allCheckboxes.forEach(cb => cb.checked = false);
+            document.getElementById('projectFormCard').classList.add('hidden');
+            loadProjects();
+        } else {
+            alert('Error creating project');
+        }
+    });
+
+    loadProjects();
+</script>
+{% endblock %}

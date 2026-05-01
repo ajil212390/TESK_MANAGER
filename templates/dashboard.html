@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 style="margin-bottom: 20px;">Dashboard</h2>
+<div class="flex">
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Total Tasks</h3>
+        <h1 id="total_tasks" style="color: var(--primary); font-size: 48px; margin-top: 10px;">0</h1>
+    </div>
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Completed</h3>
+        <h1 id="completed_tasks" style="color: var(--success); font-size: 48px; margin-top: 10px;">0</h1>
+    </div>
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Pending</h3>
+        <h1 id="pending_tasks" style="color: var(--warning); font-size: 48px; margin-top: 10px;">0</h1>
+    </div>
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Overdue</h3>
+        <h1 id="overdue_tasks" style="color: var(--danger); font-size: 48px; margin-top: 10px;">0</h1>
+    </div>
+</div>
+
+<script>
+    async function loadDashboard() {
+        const res = await fetch(API_URL + '/dashboard/', {
+            headers: getAuthHeaders()
+        });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('total_tasks').innerText = data.total_tasks;
+            document.getElementById('completed_tasks').innerText = data.completed_tasks;
+            document.getElementById('pending_tasks').innerText = data.pending_tasks;
+            document.getElementById('overdue_tasks').innerText = data.overdue_tasks;
+        } else if (res.status === 401) {
+            logout();
+        }
+    }
+    loadDashboard();
+</script>
+{% endblock %}
