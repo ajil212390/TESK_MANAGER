@@ -20,6 +20,22 @@
     </div>
 </div>
 
+<h3 style="margin-top: 30px; margin-bottom: 15px;">Your Assigned Tasks</h3>
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Due Date</th>
+            </tr>
+        </thead>
+        <tbody id="dashboardTasksBody">
+        </tbody>
+    </table>
+</div>
+
 <script>
     async function loadDashboard() {
         const res = await fetch(API_URL + '/dashboard/', {
@@ -33,6 +49,27 @@
             document.getElementById('overdue_tasks').innerText = data.overdue_tasks;
         } else if (res.status === 401) {
             logout();
+        }
+
+        const resTasks = await fetch(API_URL + '/tasks/', { headers: getAuthHeaders() });
+        if (resTasks.ok) {
+            const tasks = await resTasks.json();
+            const tbody = document.getElementById('dashboardTasksBody');
+            tbody.innerHTML = '';
+            tasks.forEach(t => {
+                const tr = document.createElement('tr');
+                const statusColor = t.status === 'done' ? 'var(--success)' : (t.status === 'in-progress' ? 'var(--warning)' : 'var(--text)');
+                tr.innerHTML = `
+                    <td>${t.title}</td>
+                    <td>${t.priority}</td>
+                    <td><span style="color: ${statusColor}; font-weight: bold;">${t.status}</span></td>
+                    <td>${t.due_date || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No tasks assigned</td></tr>';
+            }
         }
     }
     loadDashboard();

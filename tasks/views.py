@@ -17,7 +17,7 @@ class TaskListCreateView(generics.ListCreateAPIView):
         from django.db.models import Q
         if user.role == 'admin':
             return Task.objects.filter(Q(project__created_by=user) | Q(project__members=user)).distinct()
-        return Task.objects.filter(project__members=user).distinct()
+        return Task.objects.filter(assigned_to=user)
 
     def create(self, request, *args, **kwargs):
         if request.user.role != 'admin':
