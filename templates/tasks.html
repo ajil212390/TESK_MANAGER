@@ -72,6 +72,15 @@
     }
 
     async function loadOptions() {
+        // Fetch projects for ALL users (so project names display correctly)
+        const res = await fetch(API_URL + '/projects/', { headers: getAuthHeaders() });
+        if (res.ok) {
+            const projects = await res.json();
+            projects.forEach(p => {
+                projectsDict[p.id] = p;
+            });
+        }
+
         if (userRole === 'admin') {
             const resU = await fetch(API_URL + '/users/', { headers: getAuthHeaders() });
             if (resU.ok) {
@@ -81,18 +90,14 @@
                 });
             }
 
-            const res = await fetch(API_URL + '/projects/', { headers: getAuthHeaders() });
-            if (res.ok) {
-                const projects = await res.json();
-                const sel = document.getElementById('project');
-                projects.forEach(p => {
-                    projectsDict[p.id] = p;
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.innerText = p.name;
-                    sel.appendChild(opt);
-                });
-            }
+            // Populate project dropdown for task creation form
+            const sel = document.getElementById('project');
+            Object.values(projectsDict).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                sel.appendChild(opt);
+            });
             
             // Handle dynamic assignee dropdown based on selected project
             document.getElementById('project').addEventListener('change', function() {

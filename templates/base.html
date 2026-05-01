@@ -122,6 +122,7 @@
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('user_role');
+            localStorage.removeItem('user_name');
             window.location.href = '/login/';
         }
 
@@ -132,6 +133,10 @@
                     window.location.href = '/login/';
                 } else {
                     document.getElementById('header').classList.remove('hidden');
+                    const userName = localStorage.getItem('user_name');
+                    if (userName) {
+                        document.getElementById('userGreeting').innerText = 'Hi, ' + userName + ' 👋';
+                    }
                 }
             }
         });
@@ -142,6 +147,7 @@
         <header id="header" class="hidden">
             <h2>Team Task Manager</h2>
             <nav>
+                <span id="userGreeting" style="color: #c084fc; font-weight: 600; margin-right: 10px;"></span>
                 <a href="/">Dashboard</a>
                 <a href="/projects/">Projects</a>
                 <a href="/tasks/">Tasks</a>
