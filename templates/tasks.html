@@ -151,11 +151,14 @@
                     <td><span style="color: ${statusColor}; font-weight: bold;">${t.status}</span></td>
                     <td>${t.due_date || 'N/A'}</td>
                     <td>
-                        <select onchange="updateStatus(${t.id}, this.value)" style="padding: 5px; width: auto; margin: 0;">
-                            <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
-                            <option value="in-progress" ${t.status==='in-progress'?'selected':''}>In Progress</option>
-                            <option value="done" ${t.status==='done'?'selected':''}>Done</option>
-                        </select>
+                        ${userRole === 'admin' 
+                            ? `<span style="color: ${statusColor}; font-weight: bold;">${t.status}</span>`
+                            : `<select onchange="updateStatus(${t.id}, this.value)" style="padding: 5px; width: auto; margin: 0;">
+                                <option value="todo" ${t.status==='todo'?'selected':''}>To Do</option>
+                                <option value="in-progress" ${t.status==='in-progress'?'selected':''}>In Progress</option>
+                                <option value="done" ${t.status==='done'?'selected':''}>Done</option>
+                            </select>`
+                        }
                     </td>
                 `;
                 tbody.appendChild(tr);
