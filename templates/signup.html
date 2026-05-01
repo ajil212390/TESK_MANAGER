@@ -6,11 +6,6 @@
         <input type="text" id="name" placeholder="Full Name" required>
         <input type="email" id="email" placeholder="Email" required>
         <input type="password" id="password" placeholder="Password" required>
-        <label for="role" style="display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem;">Select Role</label>
-        <select id="role" required>
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-        </select>
         <button type="submit" style="width: 100%;">Sign Up</button>
     </form>
     <p style="margin-top: 15px; text-align: center;">Already have an account? <a href="/login/" style="color: var(--primary);">Login</a></p>
@@ -23,14 +18,13 @@
         const name = document.getElementById('name').value;
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const role = document.getElementById('role').value;
         const errorDiv = document.getElementById('error');
         
         try {
             const res = await fetch(API_URL + '/signup/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password, role })
+                body: JSON.stringify({ name, email, password, role: 'member' })
             });
             if (res.ok) {
                 window.location.href = '/login/';
